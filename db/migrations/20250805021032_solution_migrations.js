@@ -17,6 +17,13 @@ export async function up(knex) {
     table.string('descricao').notNullable();
     table.enum('status', ['aberto', 'solucionado']).notNullable();
   });
+
+  await knex.schema.createTable('usuarios', function(table) {
+    table.increments('id').primary();
+    table.string('nome').notNullable();
+    table.string('email').unique().notNullable();
+    table.string('senha').notNullable();
+  });
 }
 
 /**
