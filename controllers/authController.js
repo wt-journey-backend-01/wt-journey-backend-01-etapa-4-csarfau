@@ -2,6 +2,7 @@ import * as z from 'zod';
 import { usuariosRepository } from '../repositories/usuariosRepository.js';
 import { createError } from '../utils/errorHandler.js';
 import { formatZodErrors } from '../utils/formatZodErrors.js';
+import { blacklist } from '../blacklist.js';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 
@@ -53,8 +54,6 @@ async function register(req, res, next) {
 }
 
 async function login(req, res, next) {
-  console.log('aqui no login');
-
   try {
     const { email, senha } = loginSchema.parse(req.body);
     const usuario = await usuariosRepository.findUserByEmail(email);
@@ -81,7 +80,23 @@ async function login(req, res, next) {
 }
 
 async function logout(req, res) {
-  //
+  try {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader?.split(' ')[1];
+
+    if (!token) {
+      return next(createError(401, 'Token não fornecido.'));
+    }
+    
+    blacklist.add(token);
+
+    return res.status(200).send();
+  } catch (err) {
+        if (err.name === 'ZodError') {
+      return next(createError(400, formatZodErrors(err)));
+    }
+    return next(err);
+  }
 }
 
 async function deleteUser(req, res) {
