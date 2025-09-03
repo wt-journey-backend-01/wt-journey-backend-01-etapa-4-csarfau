@@ -4,7 +4,7 @@ async function findAll({ cargo, sort } = {}) {
   const query = db('agentes');
 
   if (cargo) {
-    query.where('cargo', 'ilike', cargo);
+    query.whereILike('cargo', `%${cargo}%`);
   }
 
   if (sort) {
