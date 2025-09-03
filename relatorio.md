@@ -1,39 +1,98 @@
 <sup>Esse é um feedback gerado por IA, ele pode conter erros.</sup>
 
-Você tem 4 créditos restantes para usar o sistema de feedback AI.
+Você tem 3 créditos restantes para usar o sistema de feedback AI.
 
 # Feedback para csarfau:
 
 Nota final: **52.0/100**
 
-Olá, csarfau! 👋🚀 Que jornada incrível você está trilhando ao levar sua API para um nível profissional com autenticação, segurança e organização sólida! Antes de mais nada, parabéns por implementar corretamente o registro, login, logout, exclusão de usuário e até o endpoint `/usuarios/me` — esses são pontos importantes e você conseguiu entregar bem! 🎉👏
+Olá, csarfau! 👋🚀
+
+Primeiramente, parabéns pelo empenho e pela estruturação do seu projeto! 🎉 Você implementou com sucesso várias funcionalidades importantes de autenticação, como o registro, login, logout, exclusão e endpoint para pegar dados do usuário autenticado (`/usuarios/me`). Isso é ótimo e mostra que você compreendeu bem a parte de segurança básica com JWT e bcrypt. Além disso, você aplicou corretamente o middleware de autenticação nas rotas protegidas, garantindo que só usuários autorizados possam acessar agentes e casos. Muito bom! 👏
 
 ---
 
-## 🎉 Pontos Positivos e Bônus Conquistados
+### ✅ Conquistas Bônus que você acertou:
 
-- Autenticação com JWT está funcionando e você está usando `bcrypt` para hash de senha, o que é fundamental para segurança.
-- Middleware de autenticação (`authMiddleware`) está bloqueando rotas protegidas corretamente (testes 401 passaram).
-- Endpoint `/usuarios/me` implementado e funcionando — excelente para melhorar a experiência do usuário.
-- Tratamento de erros com mensagens customizadas e uso do Zod para validação está bem estruturado.
-- Organização do projeto está alinhada com a estrutura esperada, incluindo os arquivos novos para autenticação.
-
-Você está no caminho certo! Agora vamos analisar os testes que falharam para destravar o restante e garantir que tudo funcione perfeitamente. 💪
+- Implementação correta do endpoint `/usuarios/me` para retornar os dados do usuário autenticado.
+- Proteção das rotas `/agentes` e `/casos` usando o middleware `authMiddleware`.
+- Uso adequado do bcrypt para hash das senhas na criação de usuários.
+- Geração e validação de tokens JWT com expiração.
+- Blacklist para logout funcionando para invalidar tokens.
+- Tratamento de erros com mensagens personalizadas usando Zod e middleware de erro.
+- Documentação clara no `INSTRUCTIONS.md` para autenticação e uso do token JWT.
 
 ---
 
-## 🚨 Análise dos Testes que Falharam e Causas Raiz
+### 🚩 Pontos que precisam de atenção (análise dos testes que falharam)
 
-### 1. Testes de Agentes (AGENTS) falharam em vários pontos:
+Você teve **falha em todos os testes base referentes a agentes e casos**, que são os recursos centrais do sistema. Isso impacta diretamente sua nota. Vamos entender o que pode estar acontecendo.
 
-- **Criação, listagem, busca por ID, atualização (PUT e PATCH) e remoção de agentes falharam.**
-- Também falharam testes para erros 400 e 404 em payloads incorretos e IDs inválidos.
+---
 
-#### Causa Raiz Possível:
+#### 1. Testes de Agentes e Casos falhando (criação, listagem, busca, atualização, deleção, erros 400 e 404)
 
-Olhando o seu código no `agentesController.js` e `agentesRepository.js`, a lógica parece correta em geral. Porém, uma coisa que chama atenção é a forma como você está validando e tratando os erros de ID inválido e inexistente.
+**Sintomas:**  
+- Criação de agentes e casos não está funcionando corretamente (status 201 esperado, mas falha).  
+- Listagem, busca por ID, atualizações (PUT/PATCH) e deleção retornam erros ou status incorretos.  
+- Erros de validação (400) e erros de não encontrado (404) não estão sendo tratados conforme esperado.  
+- Testes também reclamam de IDs inválidos e inexistentes.
 
-Por exemplo, no método `show`:
+**Possível causa raiz:**  
+Olhando seu código, a estrutura dos controllers, rotas e repositórios dos agentes e casos está correta. Porém, o que chama atenção é que você está usando `express` versão 5 (`"express": "^5.1.0"` no package.json). A versão 5 do Express ainda está em beta e pode ter mudanças na forma como middlewares e roteadores funcionam, o que pode impactar o funcionamento esperado dos testes, que provavelmente foram escritos para Express 4.
+
+Além disso, seu middleware de autenticação está aplicado corretamente nas rotas `/agentes` e `/casos`, o que é ótimo, mas os testes indicam que eles esperam status 401 caso o token não seja enviado — e você passou nesses testes, o que confirma que o middleware está funcionando.
+
+Outra hipótese importante: os testes falham na criação e manipulação de agentes e casos, que dependem do banco de dados. Se as migrations não foram executadas corretamente, ou a tabela `agentes` e `casos` não existem ou estão com estrutura diferente, isso causaria falhas em todas as operações de CRUD.
+
+**Verifique o seguinte:**
+
+- Se a migration que cria as tabelas `agentes`, `casos` e `usuarios` foi executada com sucesso.  
+  No seu arquivo `db/migrations/20250805021032_solution_migrations.js`, as tabelas estão definidas corretamente, mas não vi nenhuma menção no `INSTRUCTIONS.md` para rodar as migrations. Certifique-se de rodar:
+
+  ```
+  npx knex migrate:latest
+  ```
+
+- Se o banco está configurado corretamente e o container do PostgreSQL está rodando com as variáveis de ambiente certas (`POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`).  
+  Seu `docker-compose.yml` parece correto, mas confirme que o `.env` está presente e com as variáveis definidas.
+
+- Se as seeds estão rodando para popular as tabelas `agentes` e `casos`. Isso ajuda nos testes de listagem e busca.
+
+- Se o `db.js` está importando corretamente a configuração do knex e conectando ao banco, o que parece estar ok.
+
+---
+
+#### 2. Possível problema com o formato dos campos nas migrations
+
+No seu migration, você criou a tabela `agentes` com o campo `dataDeIncorporacao` como `date`:
+
+```js
+table.date('dataDeIncorporacao').notNullable();
+```
+
+Nos seus controllers e validações, você espera que `dataDeIncorporacao` seja uma string no formato `YYYY-MM-DD`, o que está correto e coerente. Porém, na API, você está usando um middleware para formatar todas as datas usando o `dayjs`:
+
+```js
+function formatDates(obj) {
+  if (obj instanceof Date) {
+    return dayjs(obj).format('YYYY-MM-DD');
+  }
+  // ...
+}
+```
+
+Isso é ótimo, mas certifique-se de que o banco está retornando o campo `dataDeIncorporacao` como um objeto `Date` e não como string. Caso contrário, o formato pode não ser aplicado corretamente.
+
+---
+
+#### 3. Validação e parsing dos IDs nas rotas
+
+Você está usando o Zod para validar os parâmetros `id` nas rotas agentes e casos, o que é excelente para garantir qualidade dos dados.
+
+Porém, nos testes que falharam, há reclamação de erros 404 ao buscar por IDs inválidos. Isso indica que talvez sua validação esteja retornando 400 para IDs inválidos, mas os testes esperam 404 em alguns casos.
+
+Note no seu controller de agentes, por exemplo:
 
 ```js
 if (err.name === 'ZodError') {
@@ -43,179 +102,112 @@ if (err.name === 'ZodError') {
 }
 ```
 
-Aqui, você está retornando **404 Not Found** para erros de validação de ID inválido (ex: `id` não numérico), mas o correto seria **400 Bad Request** para erros de formato inválido e **404 Not Found** apenas quando o ID não existir no banco.
+Aqui você está retornando 404 para erro de ID inválido (exemplo: id não numérico). Tecnicamente, um ID inválido (formato errado) deveria ser 400 (Bad Request), e 404 é para ID válido mas não encontrado.
 
-Esse pequeno detalhe pode estar confundindo os testes que esperam status 400 para IDs mal formatados.
+**Sugestão:** Troque essa lógica para:
 
-**Sugestão:** Ajuste para retornar 400 para erros de validação (formato inválido) e 404 somente quando não encontrar o recurso.
+- Retornar **400** quando o ID for inválido (ex: não numérico).  
+- Retornar **404** quando o ID for válido mas não existir no banco.
 
-Outro ponto importante é garantir que o middleware de autenticação está ativo nas rotas de agentes (e casos), o que você já fez no `server.js`:
-
-```js
-app.use('/agentes', authMiddleware, agentesRouter);
-```
-
-Então, o problema provavelmente não é o middleware.
-
-**Verifique também se o banco está populado corretamente e as migrations/seeders foram executados.**
+Assim, você atende melhor o padrão HTTP e os testes.
 
 ---
 
-### 2. Testes de Casos (CASES) falharam em:
+#### 4. No controller authController, no método `register`
 
-- Criação, listagem, busca, atualização (PUT e PATCH), remoção e erros 400/404 em payloads e IDs inválidos.
+Você faz a validação do usuário, verifica se o email já existe e cria o usuário com a senha hasheada no repositório, que está correto.
 
-#### Causa Raiz Possível:
+Mas note que você não está validando explicitamente se o campo `senha` respeita os critérios mínimos (letra maiúscula, minúscula, número e caractere especial) diretamente na migration, apenas no Zod do controller, o que é esperado. Só certifique-se de que o teste de senha está passando, o que parece estar ok.
 
-Sua lógica no `casosController.js` e `casosRepository.js` está bem alinhada com o esperado, incluindo validações Zod e checagem da existência do agente para o caso.
+---
 
-O que pode estar acontecendo:
+#### 5. Middleware `authMiddleware` e blacklist
 
-- **Validação de IDs inválidos está retornando 400 ou 404 de forma inconsistente.** Por exemplo, no método `update`:
+Seu middleware está correto, verificando token no header Authorization, verificando se o token está na blacklist (logout) e validando o JWT com `jwt.verify`.
+
+Porém, se a variável de ambiente `JWT_SECRET` não estiver definida no ambiente de execução, o `jwt.verify` vai falhar e gerar erro de token inválido.
+
+**Confirme que seu `.env` tem:**
+
+```
+JWT_SECRET="segredo aqui"
+```
+
+E que o dotenv está sendo carregado no início da aplicação (não vi no `server.js` o `dotenv.config()` — isso pode ser um problema!).
+
+---
+
+### ⚠️ Problemas detectados que podem estar causando os testes falharem:
+
+- **Não carregar o dotenv no `server.js`** — sem isso, `process.env.JWT_SECRET` será `undefined` e a autenticação falhará.  
+  **Solução:** Adicione no topo do `server.js`:
+
+  ```js
+  import dotenv from 'dotenv';
+  dotenv.config();
+  ```
+
+- **Possível problema com versão do Express 5** — pode causar incompatibilidade com alguns middlewares ou testes que esperam Express 4.
+
+- **Tratamento incorreto de erros de ID inválido** — retorne 400 para IDs inválidos (não numéricos), e 404 para IDs não encontrados.
+
+- **Verificar se migrations e seeds foram executados corretamente** — sem tabelas e dados, CRUD falhará.
+
+---
+
+### Exemplo de correção para o tratamento de ID inválido no controller agentes:
 
 ```js
 if (err.name === 'ZodError') {
-  const isInvalidId = err.issues.length === 1 && ['id', 'agente_id'].includes(err.issues[0].path[0]);
-  const statusCode = isInvalidId ? 404 : 400;
-  return next(createError(statusCode, formatZodErrors(err)));
+  const isInvalidId = err.issues.some(issue => issue.path[0] === 'id');
+  // IDs inválidos devem retornar 400 Bad Request
+  return next(createError(400, formatZodErrors(err)));
 }
 ```
 
-Aqui, você está retornando 404 para erros de validação de IDs inválidos, quando deveria ser 400.
-
-- **Verifique se está deletando corretamente os campos `id` antes de atualizar**, para evitar conflito no banco.
-
-- **Cheque se o formato do campo `status` está correto e se o enum está sendo respeitado.**
+E depois, se o agente não for encontrado, retorne 404.
 
 ---
 
-### 3. Testes Bônus que Falharam (Filtros, Busca e `/usuarios/me`)
+### Sobre a estrutura de diretórios
 
-Você implementou o endpoint `/usuarios/me` e ele passou, parabéns! Porém, os testes de filtros e buscas relacionados a agentes e casos falharam.
-
-#### Causa Raiz Possível:
-
-- Nos filtros de agentes por `cargo` e ordenação por `dataDeIncorporacao`, verifique se o seu repositório está usando corretamente o Knex para fazer queries com `ilike` e `orderBy`.
-
-- No `agentesRepository.js`, você tem:
-
-```js
-if (cargo) {
-  query.where('cargo', 'ilike', cargo);
-}
-```
-
-Esse filtro com `ilike` sem `%` pode estar buscando apenas por correspondência exata, o que pode não passar nos testes que esperam busca parcial.
-
-**Sugestão:** Use `%${cargo}%` para busca parcial:
-
-```js
-query.where('cargo', 'ilike', `%${cargo}%`);
-```
-
-- Para ordenação, você já está usando `orderBy` corretamente, mas verifique se a coluna `dataDeIncorporacao` está no formato correto no banco (tipo `date`) e se a migration está correta (pelo seu migration, parece estar ok).
-
-- Para busca de casos por palavra-chave (`q`), no `casosRepository.js` você faz:
-
-```js
-if (q) {
-  query.andWhere(function () {
-    this.whereILike('titulo', `%${q}%`).orWhereILike('descricao', `%${q}%`);
-  });
-}
-```
-
-Isso parece correto, mas verifique se o endpoint `/casos/search` está usando o middleware de autenticação e está chamando o método correto no controller.
+Sua estrutura está muito boa e condizente com a esperada. Só fique atento para manter o arquivo `.env` na raiz com as variáveis necessárias, e garantir que o `dotenv.config()` seja chamado para carregar essas variáveis.
 
 ---
 
-### 4. Estrutura de Diretórios
+### Recomendações de estudo para você aprofundar e corrigir os pontos:
 
-Sua estrutura está muito bem organizada e segue o padrão esperado! 🥳
+- Para garantir que o banco está configurado e as migrations e seeds rodando:  
+  **Configuração de Banco de Dados com Docker e Knex**  
+  https://www.youtube.com/watch?v=uEABDBQV-Ek&t=1s  
+  https://www.youtube.com/watch?v=dXWy_aGCW1E  
+  https://www.youtube.com/watch?v=AJrK90D5el0&t=9s  
 
-Você tem as pastas e arquivos:
+- Para entender melhor autenticação, JWT e bcrypt:  
+  **Esse vídeo, feito pelos meus criadores, fala muito bem sobre autenticação com JWT e bcrypt:**  
+  https://www.youtube.com/watch?v=L04Ln97AwoY  
 
-- `routes/authRoutes.js`, `controllers/authController.js`, `repositories/usuariosRepository.js`, `middlewares/authMiddleware.js`, etc.
-
-Parabéns por manter essa organização, isso facilita muito a manutenção e escalabilidade do projeto.
-
----
-
-## 👨‍🏫 Recomendações de Melhoria e Próximos Passos
-
-1. **Corrigir os status codes para erros de validação de ID:**
-
-   - IDs mal formatados devem retornar **400 Bad Request**.
-   - IDs válidos mas não encontrados retornam **404 Not Found**.
-
-   Por exemplo, no seu controlador:
-
-   ```js
-   if (err.name === 'ZodError') {
-     return next(createError(400, formatZodErrors(err)));
-   }
-   ```
-
-   E só retorne 404 quando o recurso não existir.
-
-2. **Melhorar filtros de busca para permitir buscas parciais:**
-
-   No `agentesRepository.js`:
-
-   ```js
-   if (cargo) {
-     query.where('cargo', 'ilike', `%${cargo}%`);
-   }
-   ```
-
-3. **Verificar se as migrations e seeds foram executadas corretamente:**
-
-   Use o comando:
-
-   ```
-   npx knex migrate:latest
-   npx knex seed:run
-   ```
-
-   para garantir que as tabelas e dados estão no banco.
-
-4. **Revisar o uso do campo `id` na atualização para garantir que não está sendo enviado no corpo da requisição.**
-
-5. **Continuar usando o Zod para validação, mas simplifique o tratamento de erros para não misturar status 400 e 404 em validações.**
+- Para estruturar seu projeto usando MVC e organizar controllers, rotas e repositórios:  
+  https://www.youtube.com/watch?v=bGN_xNc4A1k&t=3s  
 
 ---
 
-## 📚 Recursos para Você Aprofundar
+### Resumo rápido para você focar:
 
-- Para entender melhor o uso correto do Knex em queries e filtros, recomendo este vídeo:  
-  https://www.youtube.com/watch?v=GLwHSs7t3Ns&t=4s
-
-- Para aprofundar na autenticação com JWT e bcrypt, veja este vídeo feito pelos meus criadores, que explica muito bem os conceitos básicos:  
-  https://www.youtube.com/watch?v=Q4LQOfYwujk
-
-- Para trabalhar melhor com validações e tratamento de erros, este vídeo sobre boas práticas em Node.js pode ajudar:  
-  https://www.youtube.com/watch?v=bGN_xNc4A1k&t=3s
-
-- Caso precise revisar a configuração do banco com Docker e Knex, este vídeo é ótimo:  
-  https://www.youtube.com/watch?v=uEABDBQV-Ek&t=1s
+- Adicione `dotenv.config()` no início do `server.js` para carregar variáveis de ambiente.  
+- Garanta que as migrations e seeds foram executadas para criar e popular as tabelas `agentes`, `casos` e `usuarios`.  
+- Ajuste o tratamento de erros de ID inválido para retornar 400 (Bad Request), não 404.  
+- Verifique a versão do Express e considere usar a 4.x para maior compatibilidade com testes, se possível.  
+- Confirme que o `.env` contém `JWT_SECRET` e demais variáveis do banco.  
+- Teste suas rotas protegidas com token JWT válido e inválido para garantir a autenticação.  
 
 ---
 
-## 📝 Resumo dos Principais Pontos para Melhorar
+Você está no caminho certo, csarfau! Seu código está bem estruturado, e os conceitos de autenticação estão muito bem aplicados. Com esses ajustes, tenho certeza que você vai destravar os testes dos agentes e casos e melhorar muito sua nota! Continue firme, e não hesite em revisar os conceitos dos vídeos recomendados para aprofundar seu entendimento. 💪✨
 
-- Corrigir os status codes para erros de validação de IDs (usar 400 para formato inválido, 404 para não encontrado).
-- Ajustar filtros de busca para usar buscas parciais (`ilike` com `%`).
-- Garantir que as migrations e seeds estão aplicadas corretamente no banco.
-- Revisar tratamento do campo `id` em atualizações para evitar conflito.
-- Continuar usando Zod para validação, mas simplificar o tratamento dos erros para manter coerência nos status HTTP.
+Se precisar de ajuda para algum ponto específico, só chamar! Estou aqui para te ajudar a crescer como dev. 🚀
 
----
-
-csarfau, você já tem uma base muito boa e estruturada, faltam só alguns ajustes finos para que tudo funcione perfeitamente! Continue firme que com essas correções seu projeto vai brilhar ainda mais! 💥✨
-
-Qualquer dúvida, estou aqui para ajudar! Vamos juntos nessa jornada de aprendizado! 🚀👊
-
-Um abraço e até a próxima revisão! 🤗
+Um abraço e bons códigos! 👊😄
 
 > Caso queira tirar uma dúvida específica, entre em contato com o Chapter no nosso [discord](https://discord.gg/DryuHVnz).
 
