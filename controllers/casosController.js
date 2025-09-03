@@ -4,12 +4,14 @@ import { agentesRepository } from '../repositories/agentesRepository.js';
 import { formatZodErrors } from '../utils/formatZodErrors.js';
 import * as z from 'zod';
 
-const newCasoSchema = z.object({
-  titulo: z.string("O campo 'titulo' deve ser uma string.").min(1, "O campo 'titulo' é obrigatório."),
-  descricao: z.string("O campo 'descricao' deve ser uma string.").min(1, "O campo 'descricao' é obrigatório."),
-  status: z.enum(['aberto', 'solucionado'], "O campo 'status' deve ser somente 'aberto' ou 'solucionado'."),
-  agente_id: z.coerce.number("O campo 'agente_id' deve ser um número.").int().positive(),
-});
+const newCasoSchema = z
+  .object({
+    titulo: z.string("O campo 'titulo' deve ser uma string.").min(1, "O campo 'titulo' é obrigatório."),
+    descricao: z.string("O campo 'descricao' deve ser uma string.").min(1, "O campo 'descricao' é obrigatório."),
+    status: z.enum(['aberto', 'solucionado'], "O campo 'status' deve ser somente 'aberto' ou 'solucionado'."),
+    agente_id: z.coerce.number("O campo 'agente_id' deve ser um número.").int().positive(),
+  })
+  .strict();
 
 const indexQuerySchema = z.object({
   agente_id: z.coerce.number("O campo 'agente_id' deve ser um número.").int().positive().optional(),

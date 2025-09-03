@@ -18,7 +18,7 @@ export async function up(knex) {
     table.enum('status', ['aberto', 'solucionado']).notNullable();
   });
 
-  await knex.schema.createTable('usuarios', function(table) {
+  await knex.schema.createTable('usuarios', function (table) {
     table.increments('id').primary();
     table.string('nome').notNullable();
     table.string('email').unique().notNullable();
@@ -31,5 +31,5 @@ export async function up(knex) {
  * @returns { Promise<void> }
  */
 export async function down(knex) {
-  await knex.schema.dropTableIfExists('casos').dropTableIfExists('agentes');
+  await knex.schema.dropTableIfExists('casos').dropTableIfExists('agentes').dropTableIfExists('usuarios');
 }

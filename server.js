@@ -34,7 +34,7 @@ app.use(express.json());
 
 app.use('/agentes', authMiddleware, agentesRouter);
 app.use('/casos', authMiddleware, casosRouter);
-app.use('/', authRouter);
+app.use('/auth', authRouter);
 
 app.use(errorHandler);
 
