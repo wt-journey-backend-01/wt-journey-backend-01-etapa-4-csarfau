@@ -3,6 +3,8 @@ import { agentesRouter } from './routes/agentesRoutes.js';
 import { casosRouter } from './routes/casosRoutes.js';
 import { errorHandler } from './utils/errorHandler.js';
 import dayjs from 'dayjs';
+import { authRouter } from './routes/authRoutes.js';
+import { authMiddleware } from './middlewares/authMiddleware.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -30,8 +32,9 @@ app.use(function (req, res, next) {
 
 app.use(express.json());
 
-app.use('/agentes', agentesRouter);
-app.use('/casos', casosRouter);
+app.use('/agentes', authMiddleware, agentesRouter);
+app.use('/casos', authMiddleware, casosRouter);
+app.use('/', authRouter);
 
 app.use(errorHandler);
 
