@@ -25,13 +25,7 @@ const newUserSchema = z
 
 const loginSchema = z.object({
   email: z.email("O campo 'email' deve ser um email válido").nonempty("O campo 'email' é obrigatório."),
-  senha: z
-    .string("O campo 'senha' deve ser uma string.")
-    .min(8, 'A senha deve ter pelo menos 8 caracteres.')
-    .regex(/[a-z]/, 'A senha deve conter pelo menos uma letra minúscula.')
-    .regex(/[A-Z]/, 'A senha deve conter pelo menos uma letra maiúscula.')
-    .regex(/[0-9]/, 'A senha deve conter pelo menos um número.')
-    .regex(/[^A-Za-z0-9]/, 'A senha deve conter pelo menos um caractere especial.'),
+  senha: z.string("O campo 'senha' deve ser uma string.").min(1, 'A senha é obrigatoria.'),
 });
 
 async function register(req, res, next) {
@@ -126,9 +120,30 @@ async function deleteUser(req, res, next) {
   }
 }
 
+async function me(req, res, next) {
+  try {
+    if (!req.user) {
+      return next(createError(401, 'Não autenticado.'));
+    }
+
+    const usuario = await usuariosRepository.find(req.user.id);
+
+    if (!usuario) {
+      return next(createError(404, 'Usuário não encontrado.'));
+    }
+
+    const { senha, ...userData } = usuario;
+
+    return res.status(200).json(userData);
+  } catch (err) {
+    return next(err);
+  }
+}
+
 export const authController = {
   register,
   login,
   logout,
   deleteUser,
+  me,
 };
