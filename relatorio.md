@@ -1,207 +1,225 @@
 <sup>Esse é um feedback gerado por IA, ele pode conter erros.</sup>
 
-Você tem 6 créditos restantes para usar o sistema de feedback AI.
+Você tem 5 créditos restantes para usar o sistema de feedback AI.
 
 # Feedback para csarfau:
 
 Nota final: **52.0/100**
 
-Olá, csarfau! 👋🚀
-
-Primeiramente, parabéns pelo esforço e pelo que você já conseguiu implementar nesse desafio complexo que envolve segurança, autenticação e uma API REST completa! 🎉 Você conseguiu fazer a parte de usuários funcionar muito bem, com criação, login, logout e exclusão funcionando e passando nos testes base. Isso já é um baita avanço e mostra que você entendeu muito bem conceitos importantes como hashing de senha com bcrypt, geração de JWT e blacklist para logout. Mandou muito bem! 👏👏
+Olá, csarfau! 🚀 Que jornada incrível você está trilhando ao construir essa API REST segura e completa para o Departamento de Polícia! Antes de mais nada, parabéns por implementar com sucesso a parte de usuários — seu sistema de autenticação, registro, logout e exclusão de usuários está funcionando muito bem, e isso é fundamental para a segurança da aplicação! 🎉👏
 
 ---
 
-## O que está funcionando bem ✅
+### 🎯 Conquistas Bônus que você mandou bem:
 
-- **Usuários:** Registro, login, logout e exclusão passam nos testes. Isso mostra que seu fluxo de autenticação está correto.
-- **Middleware de autenticação:** Está protegendo as rotas de agentes e casos, retornando 401 quando não há token ou token inválido.
-- **Validação com Zod:** Você aplicou validações rigorosas para dados de entrada, o que é ótimo para segurança e estabilidade.
-- **Blacklist:** Você implementou corretamente a blacklist para tokens invalidados no logout.
-- **Estrutura de pastas:** Está bem organizada e segue o padrão esperado, incluindo os novos arquivos para auth.
+- Implementou corretamente a criação e login de usuários com validação rigorosa de senha (com letras maiúsculas, minúsculas, números e caracteres especiais).
+- Logout invalida o token JWT com blacklist, o que é uma ótima prática.
+- Deletar usuários funciona com o status 204, sem corpo.
+- O JWT retornado no login possui data de expiração válida.
+- Os erros de validação para usuários estão bem tratados com mensagens claras.
+- O middleware de autenticação está protegendo as rotas de agentes e casos, bloqueando acesso sem token válido.
 
-Além disso, você conseguiu implementar alguns bônus, como:
-
-- Endpoint para buscar agente responsável por caso.
-- Filtragem simples de casos por status e agente.
-- Uso correto dos schemas Zod para validação.
+Parabéns por esses pontos! Isso mostra que você compreendeu bem os conceitos de segurança e autenticação. 👏🔐
 
 ---
 
-## Onde precisamos focar para destravar as funcionalidades e melhorar a nota 🎯
+### 🚨 Agora vamos aos testes que falharam e o que eles indicam:
 
-### 1. Testes relacionados a agentes e casos estão falhando
-
-Você teve falhas em todos os testes base que envolvem agentes e casos, como criação, listagem, busca, atualização e exclusão. Isso é um sinal claro de que as rotas ou controllers de agentes e casos não estão funcionando como esperado, mesmo que o middleware de autenticação esteja bloqueando acesso sem token (o que passou).
-
-#### Possíveis causas:
-
-- **Middleware de autenticação bloqueando chamadas sem token:** Os testes indicam que quando você tenta criar, listar, atualizar ou deletar agentes e casos _com_ token, eles falham. Isso sugere que o problema está dentro do fluxo dessas rotas protegidas.
-- **Problemas nas queries do banco:** Seu código usa Knex corretamente, mas é importante garantir que as migrations criaram as tabelas como esperado e que os dados estão sendo inseridos e buscados corretamente.
-- **Validação Zod:** Pode haver erros silenciosos na validação dos dados que fazem o controller retornar erros 400, 404 ou não retornar os dados corretamente.
-- **Formato dos dados retornados:** Os testes esperam que os dados retornados estejam exatamente conforme o esquema, com campos corretos e tipos corretos.
+Você teve falhas em todos os testes base relacionados aos **agentes** e **casos**. Isso indica que, embora a autenticação funcione, as funcionalidades principais da API relacionadas a agentes e casos estão com problemas importantes. Vamos destrinchar os motivos mais prováveis.
 
 ---
 
-### Análise detalhada de alguns testes que falharam e suas causas prováveis
+## 1. Falhas nas operações CRUD de Agentes e Casos
 
-#### Teste: `'AGENTS: Cria agentes corretamente com status code 201 e os dados inalterados do agente mais seu ID'`
+**Testes que falharam:**
 
-- Seu controller `agentesController.create` usa o schema `newAgenteSchema` para validar os dados e chama o repository para criar.
-- O schema está correto, mas pode haver um problema na migration ou no banco que impede a inserção.
-- Verifique se a migration criou a tabela `agentes` com os campos `nome` (string), `dataDeIncorporacao` (date) e `cargo` (string) corretamente.
-- Seu arquivo de migration está assim:
+- Criação, listagem, busca, atualização (PUT e PATCH) e exclusão de agentes e casos.
+- Validação de erros 400 para payloads incorretos.
+- Retorno de erros 404 para IDs inválidos ou inexistentes.
+- Falha em filtros e buscas específicas (por cargo, status, keywords).
+- Falha no endpoint de busca do agente responsável por um caso.
+- Falha no endpoint de filtragem por status e por agente.
+
+### Análise de causa raiz:
+
+Olhando para os seus controllers e repositories, a estrutura e o uso do Knex parecem corretos. Porém, há um ponto sutil que pode estar gerando problemas:
+
+- **No controller de casos, o método `search` chama `casosRepository.findAll(filtros)`, mas o schema `searchQuerySchema` só define `q` como opcional. No repository, o método `findAll` aceita `{ agente_id, status, q }`.**  
+  Se você não está passando `agente_id` e `status` no `search`, o método pode não filtrar corretamente, ou a query pode não funcionar como esperado.  
+  **Sugestão:** Talvez criar um método específico para busca ou ajustar o schema para aceitar os filtros corretamente.
+
+- **No controller de agentes, o filtro por cargo usa `query.where('cargo', 'ilike', cargo)`, mas o teste pode esperar uma busca case-insensitive que funcione com qualquer substring.**  
+  Se o teste espera um filtro mais flexível, talvez precise usar `whereILike` com `%` para permitir buscas parciais.
+
+- **No migration, o campo `dataDeIncorporacao` é criado como `date`, mas no controller você valida como string no formato `YYYY-MM-DD`.**  
+  Isso está correto, mas na hora de inserir e atualizar, certifique-se que está enviando a data no formato correto e que o banco aceita. Qualquer problema de formato pode causar falha silenciosa.
+
+- **No controller de agentes, no método `patch`, você não está removendo o campo `id` do objeto de atualização, diferente do método `update`.**  
+  Isso pode causar erro se o cliente enviar o `id` no corpo.  
+  **Correção:** Antes de atualizar, remova `id` do objeto a ser atualizado.
+
+- **No controller de casos, no método `update` e `patch`, você está deletando o `id` do objeto, mas no método `patch` não está validando se o campo `id` foi enviado no corpo para rejeitar.**  
+  Isso pode causar inconsistência.
+
+- **No middleware de autenticação, você retorna erro 401 com mensagem genérica "Token inválido!" para token ausente ou inválido. Isso está correto e passou nos testes.**
+
+---
+
+## 2. Possível problema na estrutura dos diretórios e arquivos
+
+Sua estrutura está muito próxima do esperado, mas atenção:
+
+- Você tem o arquivo `relatorio.md` na raiz, que não é especificado no desafio — isso não é problema, apenas atenção para não misturar arquivos desnecessários.
+
+- O arquivo `blacklist.js` está presente e é usado para controlar tokens inválidos, o que é ótimo.
+
+- O arquivo `INSTRUCTIONS.md` está presente e com instruções claras.
+
+**Conclusão:** A estrutura está adequada, não é o motivo das falhas.
+
+---
+
+## 3. Possível motivo da falha geral: Falta de tratamento adequado para payloads inválidos e erros de validação
+
+Você usa o Zod para validar os dados, o que é excelente! Mas os testes indicam que:
+
+- Ao criar ou atualizar agentes e casos, quando o payload está incorreto, você deve retornar status 400 com mensagens claras.
+
+- Quando o ID é inválido (ex: string em vez de número), deve retornar 404 ou 400 conforme o caso.
+
+Seu código já faz isso, mas os testes falharam, o que sugere que:
+
+- Talvez o tratamento de erros do Zod está correto, mas o formato da resposta ou a forma como você chama o `next(createError(...))` pode estar diferente do esperado.
+
+- Ou o middleware de erro personalizado (`errorHandler.js`) pode não estar formatando as respostas como o teste espera.
+
+**Verifique se seu middleware de erro está assim:**
 
 ```js
-await knex.schema.createTable('agentes', function (table) {
-  table.increments('id').primary();
-  table.string('nome').notNullable();
-  table.date('dataDeIncorporacao').notNullable();
-  table.string('cargo').notNullable();
+export function errorHandler(err, req, res, next) {
+  const status = err.status || 500;
+  const message = err.message || 'Internal Server Error';
+  const details = err.details || null;
+
+  res.status(status).json({ error: message, details });
+}
+```
+
+Se ele não estiver retornando o JSON no formato esperado, os testes falham.
+
+---
+
+## 4. Sobre a validação da senha no registro e login
+
+Você validou a senha com regex no Zod, o que é ótimo e passou nos testes. Porém, no login, essa validação pode ser muito restritiva — geralmente, no login, só se valida se a senha é string, pois o usuário pode ter criado a senha antes das regras atuais. Mas você está aplicando a mesma validação rigorosa no login:
+
+```js
+const loginSchema = z.object({
+  email: z.email().nonempty(),
+  senha: z.string().min(8).regex(...).regex(...).regex(...).regex(...),
 });
 ```
 
-- Isso parece correto.
-- Contudo, o seu seed para agentes está inserindo datas como string `'2018-02-01'`, o que é correto, mas o controller pode estar exigindo que o campo `dataDeIncorporacao` seja uma string no formato `YYYY-MM-DD` e o banco espera `date`.
-- No controller, você valida `dataDeIncorporacao` como string no formato correto, o que está certo.
-- Porém, no repository, você insere diretamente o objeto, o que deve funcionar.
-- Então, o motivo mais provável para falha aqui é que o seu teste está enviando dados de forma diferente do esperado, ou que o controller está retornando erro de validação.
-- Recomendo adicionar logs no controller para ver o que está chegando no `req.body` e se o `newAgenteSchema.parse` está passando.
+Isso pode rejeitar tentativas de login com senhas que não atendem exatamente ao padrão, mesmo que estejam corretas no banco (por exemplo, se o usuário foi criado antes). O ideal no login é validar só o tipo e presença da senha, não o formato.
 
 ---
 
-#### Teste: `'AGENTS: Lista todos os agente corretamente com status code 200 e todos os dados de cada agente listados corretamente'`
+## 5. Sobre os testes bônus que falharam
 
-- O método `agentesController.index` chama `agentesRepository.findAll` com filtros.
-- Em `agentesRepository.findAll`, você usa `query.where('cargo', 'ilike', cargo);` para filtro, e ordenação por `dataDeIncorporacao`.
-- Aqui pode haver um problema: o campo `dataDeIncorporacao` no banco é do tipo `date`, mas no filtro você usa `ilike` para `cargo` que é string — isso está certo.
-- Contudo, o campo `dataDeIncorporacao` pode estar vindo como objeto Date do banco e seu middleware no `server.js` formata datas para `YYYY-MM-DD`, o que está correto.
-- O problema pode estar na query que retorna um array vazio ou no formato do dado.
-- Verifique se a tabela `agentes` está populada (se você rodou o seed).
-- Também verifique se o middleware de autenticação está funcionando corretamente e não bloqueando a requisição.
-- Você pode testar manualmente via Postman para ver se o endpoint `/agentes` retorna dados.
+Você não implementou (ou não passou) os testes bônus que envolvem:
 
----
+- Endpoint `/usuarios/me` para retornar dados do usuário autenticado.
+- Filtragem detalhada por status e agente nos casos.
+- Busca avançada por keywords.
+- Ordenação e filtragem complexa em agentes.
+- Mensagens customizadas para erros.
 
-#### Teste: `'AGENTS: Recebe status code 401 ao tentar criar agente corretamente mas sem header de autorização com token JWT'`
-
-- Esse teste passou, o que significa que o middleware está protegendo as rotas.
-- Ótimo! Isso confirma que o problema não é no middleware.
+Essas são melhorias que podem ser feitas depois de corrigir os pontos principais.
 
 ---
 
-#### Testes de casos (casosController)
+## Exemplos de ajustes importantes para destravar seus testes:
 
-- O padrão dos erros é parecido: falha ao criar, listar, atualizar, deletar casos.
-- Seu controller e repository parecem corretos.
-- Uma possibilidade é que a validação de IDs de agente esteja falhando, por exemplo, ao criar um caso você verifica se o agente existe:
+### Remover `id` no patch do agente para evitar erro
+
+No `agentesController.js`, método `patch`:
 
 ```js
-const agente = await agentesRepository.findById(newCasoData.agente_id);
-if (!agente) {
-  return next(createError(404, { agente_id: `Agente informado não existe.` }));
+async function patch(req, res, next) {
+  // ...
+  const agenteDataToUpdate = newAgenteSchema.partial().strict().parse(req.body);
+  delete agenteDataToUpdate.id; // <- Adicione esta linha para evitar atualização do ID
+  // ...
 }
 ```
 
-- Se o agente não existir, o caso não será criado.
-- Verifique se a tabela `agentes` está populada.
-- Também revise se as rotas estão sendo chamadas com token válido e payload correto.
+### Ajustar validação no login para aceitar qualquer senha (sem regex)
 
----
-
-### 2. Falta de documentação de autenticação no INSTRUCTIONS.md
-
-Seu arquivo `INSTRUCTIONS.md` está curto e não inclui as informações pedidas no desafio, como:
-
-- Como registrar e logar usuários (exemplos de payload).
-- Como enviar o token JWT no header `Authorization`.
-- Fluxo de autenticação esperado.
-
-Isso é importante para o uso correto da API e para aprovação no desafio.
-
----
-
-### 3. Recomendações para corrigir e melhorar
-
-- **Verifique se as migrations foram rodadas corretamente e as tabelas estão criadas e populadas.** Você pode usar o comando `npx knex migrate:latest` e `npx knex seed:run`.
-- **Teste manualmente as rotas de agentes e casos com token JWT válido.** Use Postman ou Insomnia para enviar requisições autenticadas e veja as respostas.
-- **Adicione logs temporários no controller para depurar dados recebidos e respostas.** Por exemplo:
+No `authController.js`, defina o schema de login assim:
 
 ```js
-async function create(req, res, next) {
-  try {
-    console.log('Dados recebidos:', req.body);
-    let newAgenteData = newAgenteSchema.parse(req.body);
-    // restante do código...
-  } catch (err) {
-    console.error(err);
-    // tratamento de erro...
-  }
+const loginSchema = z.object({
+  email: z.email("O campo 'email' deve ser um email válido").nonempty("O campo 'email' é obrigatório."),
+  senha: z.string("O campo 'senha' deve ser uma string.").min(1, "O campo 'senha' é obrigatório."),
+});
+```
+
+Assim, você não rejeita logins com senhas que não atendem ao padrão, apenas verifica se a senha foi enviada.
+
+### Confirmar middleware de erro está formatando JSON corretamente
+
+No arquivo `utils/errorHandler.js`, o middleware deve ser algo como:
+
+```js
+export function errorHandler(err, req, res, next) {
+  const status = err.status || 500;
+  const message = err.message || 'Internal Server Error';
+  const details = err.details || null;
+
+  res.status(status).json({ error: message, details });
 }
 ```
 
-- **Complete o arquivo INSTRUCTIONS.md com exemplos claros de uso dos endpoints de autenticação e uso do token JWT no header.** Por exemplo:
-
-```
-# Instruções de Autenticação
-
-## Registrar usuário
-POST /auth/register
-Payload:
-{
-  "nome": "Seu Nome",
-  "email": "email@exemplo.com",
-  "senha": "Senha123!"
-}
-
-## Login
-POST /auth/login
-Payload:
-{
-  "email": "email@exemplo.com",
-  "senha": "Senha123!"
-}
-Resposta:
-{
-  "access_token": "seu_token_jwt"
-}
-
-## Usar token JWT
-Inclua no header das requisições protegidas:
-Authorization: Bearer seu_token_jwt
-```
-
-- **Revise as validações Zod para garantir que elas estão de acordo com os dados enviados pelos testes.**
+Se você estiver retornando um objeto diferente, os testes podem falhar.
 
 ---
 
-### Recursos para você estudar e aprimorar seu projeto
+## Recursos recomendados para você avançar ainda mais:
 
-- Para entender melhor autenticação, JWT e bcrypt, recomendo muito este vídeo, feito pelos meus criadores, que fala muito bem sobre autenticação em Node.js: https://www.youtube.com/watch?v=Q4LQOfYwujk
-- Para aprofundar no uso de JWT na prática: https://www.youtube.com/watch?v=keS0JWOypIU
-- Para entender melhor o uso de bcrypt e JWT juntos: https://www.youtube.com/watch?v=L04Ln97AwoY
-- Para revisar arquitetura e organização de projetos Node.js com MVC: https://www.youtube.com/watch?v=bGN_xNc4A1k&t=3s
-- Para garantir que seu banco está configurado corretamente com Docker e Knex: https://www.youtube.com/watch?v=uEABDBQV-Ek&t=1s e https://www.youtube.com/watch?v=dXWy_aGCW1E
+- Para entender melhor como trabalhar com autenticação JWT e bcrypt, recomendo muito este vídeo, feito pelos meus criadores, que aborda os conceitos básicos e fundamentais da cibersegurança: https://www.youtube.com/watch?v=Q4LQOfYwujk
 
----
+- Para aprofundar no uso do JWT na prática, este vídeo é excelente: https://www.youtube.com/watch?v=keS0JWOypIU
 
-## Resumo rápido dos principais pontos para focar:
+- Caso queira melhorar suas queries com Knex e entender melhor migrations e seeds, estes vídeos vão ajudar bastante:  
+  - Knex Query Builder: https://www.youtube.com/watch?v=GLwHSs7t3Ns&t=4s  
+  - Migrations com Knex: https://www.youtube.com/watch?v=dXWy_aGCW1E  
+  - Seeds com Knex: https://www.youtube.com/watch?v=AJrK90D5el0&t=9s
 
-- [ ] Verifique se as migrations e seeds foram aplicados corretamente e as tabelas estão populadas.
-- [ ] Teste manualmente as rotas de agentes e casos com token JWT válido para identificar onde ocorrem erros.
-- [ ] Adicione logs nos controllers para depurar dados recebidos e erros.
-- [ ] Complete o arquivo INSTRUCTIONS.md com documentação clara sobre autenticação e uso do token JWT.
-- [ ] Revise as validações Zod para confirmar que estão alinhadas com os dados esperados.
-- [ ] Confirme que o middleware de autenticação está aplicado corretamente e não bloqueia indevidamente.
-- [ ] Garanta que os dados retornados estão no formato esperado pelos testes (ex.: campos e tipos corretos).
+- Para organizar seu projeto com boas práticas e arquitetura MVC, veja este vídeo: https://www.youtube.com/watch?v=bGN_xNc4A1k&t=3s
 
 ---
 
-csarfau, você está no caminho certo e já tem uma base muito boa para construir uma API segura e profissional! Continue revisando os pontos que destaquei, testando com calma e usando os recursos recomendados. A prática leva à perfeição, e você vai conseguir destravar esses testes rapidinho! 🚀💪
+## Resumo rápido dos pontos para focar:
 
-Se precisar de ajuda para entender algum ponto específico, estou por aqui para ajudar! 😉
+- [ ] Ajustar o schema de login para não validar a senha com regex, apenas verificar se foi enviada (string não vazia).
 
-Abraços e sucesso no código! 👨‍💻✨
+- [ ] No `patch` de agentes e casos, remover o campo `id` do objeto de atualização para evitar tentativas de alterar o ID.
+
+- [ ] Verificar se o middleware de tratamento de erros (`errorHandler.js`) está retornando JSON no formato esperado pelos testes.
+
+- [ ] Ajustar filtros e buscas para garantir que os parâmetros sejam passados e usados corretamente (ex: filtro por cargo com `whereILike` e `%` para busca parcial).
+
+- [ ] Garantir que as datas enviadas para o banco estejam no formato correto e coerente com o schema do banco.
+
+- [ ] Implementar endpoints e funcionalidades bônus para melhorar a nota (ex: `/usuarios/me`).
+
+---
+
+Você está muito perto de destravar todos os testes! Continue assim, revisando esses pontos com calma que logo sua API estará 100% funcional e segura! 🚀💪
+
+Qualquer dúvida, estou aqui para ajudar! Continue firme e parabéns pelo esforço até aqui! 🎉😊
+
+Um abraço do seu Code Buddy! 🤖✨
 
 > Caso queira tirar uma dúvida específica, entre em contato com o Chapter no nosso [discord](https://discord.gg/DryuHVnz).
 
