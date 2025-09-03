@@ -1,225 +1,221 @@
 <sup>Esse é um feedback gerado por IA, ele pode conter erros.</sup>
 
-Você tem 5 créditos restantes para usar o sistema de feedback AI.
+Você tem 4 créditos restantes para usar o sistema de feedback AI.
 
 # Feedback para csarfau:
 
 Nota final: **52.0/100**
 
-Olá, csarfau! 🚀 Que jornada incrível você está trilhando ao construir essa API REST segura e completa para o Departamento de Polícia! Antes de mais nada, parabéns por implementar com sucesso a parte de usuários — seu sistema de autenticação, registro, logout e exclusão de usuários está funcionando muito bem, e isso é fundamental para a segurança da aplicação! 🎉👏
+Olá, csarfau! 👋🚀 Que jornada incrível você está trilhando ao levar sua API para um nível profissional com autenticação, segurança e organização sólida! Antes de mais nada, parabéns por implementar corretamente o registro, login, logout, exclusão de usuário e até o endpoint `/usuarios/me` — esses são pontos importantes e você conseguiu entregar bem! 🎉👏
 
 ---
 
-### 🎯 Conquistas Bônus que você mandou bem:
+## 🎉 Pontos Positivos e Bônus Conquistados
 
-- Implementou corretamente a criação e login de usuários com validação rigorosa de senha (com letras maiúsculas, minúsculas, números e caracteres especiais).
-- Logout invalida o token JWT com blacklist, o que é uma ótima prática.
-- Deletar usuários funciona com o status 204, sem corpo.
-- O JWT retornado no login possui data de expiração válida.
-- Os erros de validação para usuários estão bem tratados com mensagens claras.
-- O middleware de autenticação está protegendo as rotas de agentes e casos, bloqueando acesso sem token válido.
+- Autenticação com JWT está funcionando e você está usando `bcrypt` para hash de senha, o que é fundamental para segurança.
+- Middleware de autenticação (`authMiddleware`) está bloqueando rotas protegidas corretamente (testes 401 passaram).
+- Endpoint `/usuarios/me` implementado e funcionando — excelente para melhorar a experiência do usuário.
+- Tratamento de erros com mensagens customizadas e uso do Zod para validação está bem estruturado.
+- Organização do projeto está alinhada com a estrutura esperada, incluindo os arquivos novos para autenticação.
 
-Parabéns por esses pontos! Isso mostra que você compreendeu bem os conceitos de segurança e autenticação. 👏🔐
-
----
-
-### 🚨 Agora vamos aos testes que falharam e o que eles indicam:
-
-Você teve falhas em todos os testes base relacionados aos **agentes** e **casos**. Isso indica que, embora a autenticação funcione, as funcionalidades principais da API relacionadas a agentes e casos estão com problemas importantes. Vamos destrinchar os motivos mais prováveis.
+Você está no caminho certo! Agora vamos analisar os testes que falharam para destravar o restante e garantir que tudo funcione perfeitamente. 💪
 
 ---
 
-## 1. Falhas nas operações CRUD de Agentes e Casos
+## 🚨 Análise dos Testes que Falharam e Causas Raiz
 
-**Testes que falharam:**
+### 1. Testes de Agentes (AGENTS) falharam em vários pontos:
 
-- Criação, listagem, busca, atualização (PUT e PATCH) e exclusão de agentes e casos.
-- Validação de erros 400 para payloads incorretos.
-- Retorno de erros 404 para IDs inválidos ou inexistentes.
-- Falha em filtros e buscas específicas (por cargo, status, keywords).
-- Falha no endpoint de busca do agente responsável por um caso.
-- Falha no endpoint de filtragem por status e por agente.
+- **Criação, listagem, busca por ID, atualização (PUT e PATCH) e remoção de agentes falharam.**
+- Também falharam testes para erros 400 e 404 em payloads incorretos e IDs inválidos.
 
-### Análise de causa raiz:
+#### Causa Raiz Possível:
 
-Olhando para os seus controllers e repositories, a estrutura e o uso do Knex parecem corretos. Porém, há um ponto sutil que pode estar gerando problemas:
+Olhando o seu código no `agentesController.js` e `agentesRepository.js`, a lógica parece correta em geral. Porém, uma coisa que chama atenção é a forma como você está validando e tratando os erros de ID inválido e inexistente.
 
-- **No controller de casos, o método `search` chama `casosRepository.findAll(filtros)`, mas o schema `searchQuerySchema` só define `q` como opcional. No repository, o método `findAll` aceita `{ agente_id, status, q }`.**  
-  Se você não está passando `agente_id` e `status` no `search`, o método pode não filtrar corretamente, ou a query pode não funcionar como esperado.  
-  **Sugestão:** Talvez criar um método específico para busca ou ajustar o schema para aceitar os filtros corretamente.
-
-- **No controller de agentes, o filtro por cargo usa `query.where('cargo', 'ilike', cargo)`, mas o teste pode esperar uma busca case-insensitive que funcione com qualquer substring.**  
-  Se o teste espera um filtro mais flexível, talvez precise usar `whereILike` com `%` para permitir buscas parciais.
-
-- **No migration, o campo `dataDeIncorporacao` é criado como `date`, mas no controller você valida como string no formato `YYYY-MM-DD`.**  
-  Isso está correto, mas na hora de inserir e atualizar, certifique-se que está enviando a data no formato correto e que o banco aceita. Qualquer problema de formato pode causar falha silenciosa.
-
-- **No controller de agentes, no método `patch`, você não está removendo o campo `id` do objeto de atualização, diferente do método `update`.**  
-  Isso pode causar erro se o cliente enviar o `id` no corpo.  
-  **Correção:** Antes de atualizar, remova `id` do objeto a ser atualizado.
-
-- **No controller de casos, no método `update` e `patch`, você está deletando o `id` do objeto, mas no método `patch` não está validando se o campo `id` foi enviado no corpo para rejeitar.**  
-  Isso pode causar inconsistência.
-
-- **No middleware de autenticação, você retorna erro 401 com mensagem genérica "Token inválido!" para token ausente ou inválido. Isso está correto e passou nos testes.**
-
----
-
-## 2. Possível problema na estrutura dos diretórios e arquivos
-
-Sua estrutura está muito próxima do esperado, mas atenção:
-
-- Você tem o arquivo `relatorio.md` na raiz, que não é especificado no desafio — isso não é problema, apenas atenção para não misturar arquivos desnecessários.
-
-- O arquivo `blacklist.js` está presente e é usado para controlar tokens inválidos, o que é ótimo.
-
-- O arquivo `INSTRUCTIONS.md` está presente e com instruções claras.
-
-**Conclusão:** A estrutura está adequada, não é o motivo das falhas.
-
----
-
-## 3. Possível motivo da falha geral: Falta de tratamento adequado para payloads inválidos e erros de validação
-
-Você usa o Zod para validar os dados, o que é excelente! Mas os testes indicam que:
-
-- Ao criar ou atualizar agentes e casos, quando o payload está incorreto, você deve retornar status 400 com mensagens claras.
-
-- Quando o ID é inválido (ex: string em vez de número), deve retornar 404 ou 400 conforme o caso.
-
-Seu código já faz isso, mas os testes falharam, o que sugere que:
-
-- Talvez o tratamento de erros do Zod está correto, mas o formato da resposta ou a forma como você chama o `next(createError(...))` pode estar diferente do esperado.
-
-- Ou o middleware de erro personalizado (`errorHandler.js`) pode não estar formatando as respostas como o teste espera.
-
-**Verifique se seu middleware de erro está assim:**
+Por exemplo, no método `show`:
 
 ```js
-export function errorHandler(err, req, res, next) {
-  const status = err.status || 500;
-  const message = err.message || 'Internal Server Error';
-  const details = err.details || null;
-
-  res.status(status).json({ error: message, details });
+if (err.name === 'ZodError') {
+  const isInvalidId = err.issues.length === 1 && err.issues[0].path[0] === 'id';
+  const statusCode = isInvalidId ? 404 : 400;
+  return next(createError(statusCode, formatZodErrors(err)));
 }
 ```
 
-Se ele não estiver retornando o JSON no formato esperado, os testes falham.
+Aqui, você está retornando **404 Not Found** para erros de validação de ID inválido (ex: `id` não numérico), mas o correto seria **400 Bad Request** para erros de formato inválido e **404 Not Found** apenas quando o ID não existir no banco.
 
----
+Esse pequeno detalhe pode estar confundindo os testes que esperam status 400 para IDs mal formatados.
 
-## 4. Sobre a validação da senha no registro e login
+**Sugestão:** Ajuste para retornar 400 para erros de validação (formato inválido) e 404 somente quando não encontrar o recurso.
 
-Você validou a senha com regex no Zod, o que é ótimo e passou nos testes. Porém, no login, essa validação pode ser muito restritiva — geralmente, no login, só se valida se a senha é string, pois o usuário pode ter criado a senha antes das regras atuais. Mas você está aplicando a mesma validação rigorosa no login:
+Outro ponto importante é garantir que o middleware de autenticação está ativo nas rotas de agentes (e casos), o que você já fez no `server.js`:
 
 ```js
-const loginSchema = z.object({
-  email: z.email().nonempty(),
-  senha: z.string().min(8).regex(...).regex(...).regex(...).regex(...),
-});
+app.use('/agentes', authMiddleware, agentesRouter);
 ```
 
-Isso pode rejeitar tentativas de login com senhas que não atendem exatamente ao padrão, mesmo que estejam corretas no banco (por exemplo, se o usuário foi criado antes). O ideal no login é validar só o tipo e presença da senha, não o formato.
+Então, o problema provavelmente não é o middleware.
+
+**Verifique também se o banco está populado corretamente e as migrations/seeders foram executados.**
 
 ---
 
-## 5. Sobre os testes bônus que falharam
+### 2. Testes de Casos (CASES) falharam em:
 
-Você não implementou (ou não passou) os testes bônus que envolvem:
+- Criação, listagem, busca, atualização (PUT e PATCH), remoção e erros 400/404 em payloads e IDs inválidos.
 
-- Endpoint `/usuarios/me` para retornar dados do usuário autenticado.
-- Filtragem detalhada por status e agente nos casos.
-- Busca avançada por keywords.
-- Ordenação e filtragem complexa em agentes.
-- Mensagens customizadas para erros.
+#### Causa Raiz Possível:
 
-Essas são melhorias que podem ser feitas depois de corrigir os pontos principais.
+Sua lógica no `casosController.js` e `casosRepository.js` está bem alinhada com o esperado, incluindo validações Zod e checagem da existência do agente para o caso.
 
----
+O que pode estar acontecendo:
 
-## Exemplos de ajustes importantes para destravar seus testes:
-
-### Remover `id` no patch do agente para evitar erro
-
-No `agentesController.js`, método `patch`:
+- **Validação de IDs inválidos está retornando 400 ou 404 de forma inconsistente.** Por exemplo, no método `update`:
 
 ```js
-async function patch(req, res, next) {
-  // ...
-  const agenteDataToUpdate = newAgenteSchema.partial().strict().parse(req.body);
-  delete agenteDataToUpdate.id; // <- Adicione esta linha para evitar atualização do ID
-  // ...
+if (err.name === 'ZodError') {
+  const isInvalidId = err.issues.length === 1 && ['id', 'agente_id'].includes(err.issues[0].path[0]);
+  const statusCode = isInvalidId ? 404 : 400;
+  return next(createError(statusCode, formatZodErrors(err)));
 }
 ```
 
-### Ajustar validação no login para aceitar qualquer senha (sem regex)
+Aqui, você está retornando 404 para erros de validação de IDs inválidos, quando deveria ser 400.
 
-No `authController.js`, defina o schema de login assim:
+- **Verifique se está deletando corretamente os campos `id` antes de atualizar**, para evitar conflito no banco.
+
+- **Cheque se o formato do campo `status` está correto e se o enum está sendo respeitado.**
+
+---
+
+### 3. Testes Bônus que Falharam (Filtros, Busca e `/usuarios/me`)
+
+Você implementou o endpoint `/usuarios/me` e ele passou, parabéns! Porém, os testes de filtros e buscas relacionados a agentes e casos falharam.
+
+#### Causa Raiz Possível:
+
+- Nos filtros de agentes por `cargo` e ordenação por `dataDeIncorporacao`, verifique se o seu repositório está usando corretamente o Knex para fazer queries com `ilike` e `orderBy`.
+
+- No `agentesRepository.js`, você tem:
 
 ```js
-const loginSchema = z.object({
-  email: z.email("O campo 'email' deve ser um email válido").nonempty("O campo 'email' é obrigatório."),
-  senha: z.string("O campo 'senha' deve ser uma string.").min(1, "O campo 'senha' é obrigatório."),
-});
-```
-
-Assim, você não rejeita logins com senhas que não atendem ao padrão, apenas verifica se a senha foi enviada.
-
-### Confirmar middleware de erro está formatando JSON corretamente
-
-No arquivo `utils/errorHandler.js`, o middleware deve ser algo como:
-
-```js
-export function errorHandler(err, req, res, next) {
-  const status = err.status || 500;
-  const message = err.message || 'Internal Server Error';
-  const details = err.details || null;
-
-  res.status(status).json({ error: message, details });
+if (cargo) {
+  query.where('cargo', 'ilike', cargo);
 }
 ```
 
-Se você estiver retornando um objeto diferente, os testes podem falhar.
+Esse filtro com `ilike` sem `%` pode estar buscando apenas por correspondência exata, o que pode não passar nos testes que esperam busca parcial.
+
+**Sugestão:** Use `%${cargo}%` para busca parcial:
+
+```js
+query.where('cargo', 'ilike', `%${cargo}%`);
+```
+
+- Para ordenação, você já está usando `orderBy` corretamente, mas verifique se a coluna `dataDeIncorporacao` está no formato correto no banco (tipo `date`) e se a migration está correta (pelo seu migration, parece estar ok).
+
+- Para busca de casos por palavra-chave (`q`), no `casosRepository.js` você faz:
+
+```js
+if (q) {
+  query.andWhere(function () {
+    this.whereILike('titulo', `%${q}%`).orWhereILike('descricao', `%${q}%`);
+  });
+}
+```
+
+Isso parece correto, mas verifique se o endpoint `/casos/search` está usando o middleware de autenticação e está chamando o método correto no controller.
 
 ---
 
-## Recursos recomendados para você avançar ainda mais:
+### 4. Estrutura de Diretórios
 
-- Para entender melhor como trabalhar com autenticação JWT e bcrypt, recomendo muito este vídeo, feito pelos meus criadores, que aborda os conceitos básicos e fundamentais da cibersegurança: https://www.youtube.com/watch?v=Q4LQOfYwujk
+Sua estrutura está muito bem organizada e segue o padrão esperado! 🥳
 
-- Para aprofundar no uso do JWT na prática, este vídeo é excelente: https://www.youtube.com/watch?v=keS0JWOypIU
+Você tem as pastas e arquivos:
 
-- Caso queira melhorar suas queries com Knex e entender melhor migrations e seeds, estes vídeos vão ajudar bastante:  
-  - Knex Query Builder: https://www.youtube.com/watch?v=GLwHSs7t3Ns&t=4s  
-  - Migrations com Knex: https://www.youtube.com/watch?v=dXWy_aGCW1E  
-  - Seeds com Knex: https://www.youtube.com/watch?v=AJrK90D5el0&t=9s
+- `routes/authRoutes.js`, `controllers/authController.js`, `repositories/usuariosRepository.js`, `middlewares/authMiddleware.js`, etc.
 
-- Para organizar seu projeto com boas práticas e arquitetura MVC, veja este vídeo: https://www.youtube.com/watch?v=bGN_xNc4A1k&t=3s
+Parabéns por manter essa organização, isso facilita muito a manutenção e escalabilidade do projeto.
 
 ---
 
-## Resumo rápido dos pontos para focar:
+## 👨‍🏫 Recomendações de Melhoria e Próximos Passos
 
-- [ ] Ajustar o schema de login para não validar a senha com regex, apenas verificar se foi enviada (string não vazia).
+1. **Corrigir os status codes para erros de validação de ID:**
 
-- [ ] No `patch` de agentes e casos, remover o campo `id` do objeto de atualização para evitar tentativas de alterar o ID.
+   - IDs mal formatados devem retornar **400 Bad Request**.
+   - IDs válidos mas não encontrados retornam **404 Not Found**.
 
-- [ ] Verificar se o middleware de tratamento de erros (`errorHandler.js`) está retornando JSON no formato esperado pelos testes.
+   Por exemplo, no seu controlador:
 
-- [ ] Ajustar filtros e buscas para garantir que os parâmetros sejam passados e usados corretamente (ex: filtro por cargo com `whereILike` e `%` para busca parcial).
+   ```js
+   if (err.name === 'ZodError') {
+     return next(createError(400, formatZodErrors(err)));
+   }
+   ```
 
-- [ ] Garantir que as datas enviadas para o banco estejam no formato correto e coerente com o schema do banco.
+   E só retorne 404 quando o recurso não existir.
 
-- [ ] Implementar endpoints e funcionalidades bônus para melhorar a nota (ex: `/usuarios/me`).
+2. **Melhorar filtros de busca para permitir buscas parciais:**
+
+   No `agentesRepository.js`:
+
+   ```js
+   if (cargo) {
+     query.where('cargo', 'ilike', `%${cargo}%`);
+   }
+   ```
+
+3. **Verificar se as migrations e seeds foram executadas corretamente:**
+
+   Use o comando:
+
+   ```
+   npx knex migrate:latest
+   npx knex seed:run
+   ```
+
+   para garantir que as tabelas e dados estão no banco.
+
+4. **Revisar o uso do campo `id` na atualização para garantir que não está sendo enviado no corpo da requisição.**
+
+5. **Continuar usando o Zod para validação, mas simplifique o tratamento de erros para não misturar status 400 e 404 em validações.**
 
 ---
 
-Você está muito perto de destravar todos os testes! Continue assim, revisando esses pontos com calma que logo sua API estará 100% funcional e segura! 🚀💪
+## 📚 Recursos para Você Aprofundar
 
-Qualquer dúvida, estou aqui para ajudar! Continue firme e parabéns pelo esforço até aqui! 🎉😊
+- Para entender melhor o uso correto do Knex em queries e filtros, recomendo este vídeo:  
+  https://www.youtube.com/watch?v=GLwHSs7t3Ns&t=4s
 
-Um abraço do seu Code Buddy! 🤖✨
+- Para aprofundar na autenticação com JWT e bcrypt, veja este vídeo feito pelos meus criadores, que explica muito bem os conceitos básicos:  
+  https://www.youtube.com/watch?v=Q4LQOfYwujk
+
+- Para trabalhar melhor com validações e tratamento de erros, este vídeo sobre boas práticas em Node.js pode ajudar:  
+  https://www.youtube.com/watch?v=bGN_xNc4A1k&t=3s
+
+- Caso precise revisar a configuração do banco com Docker e Knex, este vídeo é ótimo:  
+  https://www.youtube.com/watch?v=uEABDBQV-Ek&t=1s
+
+---
+
+## 📝 Resumo dos Principais Pontos para Melhorar
+
+- Corrigir os status codes para erros de validação de IDs (usar 400 para formato inválido, 404 para não encontrado).
+- Ajustar filtros de busca para usar buscas parciais (`ilike` com `%`).
+- Garantir que as migrations e seeds estão aplicadas corretamente no banco.
+- Revisar tratamento do campo `id` em atualizações para evitar conflito.
+- Continuar usando Zod para validação, mas simplificar o tratamento dos erros para manter coerência nos status HTTP.
+
+---
+
+csarfau, você já tem uma base muito boa e estruturada, faltam só alguns ajustes finos para que tudo funcione perfeitamente! Continue firme que com essas correções seu projeto vai brilhar ainda mais! 💥✨
+
+Qualquer dúvida, estou aqui para ajudar! Vamos juntos nessa jornada de aprendizado! 🚀👊
+
+Um abraço e até a próxima revisão! 🤗
 
 > Caso queira tirar uma dúvida específica, entre em contato com o Chapter no nosso [discord](https://discord.gg/DryuHVnz).
 
