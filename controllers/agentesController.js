@@ -84,8 +84,6 @@ async function show(req, res, next) {
     console.log(err.issues);
 
     if (err.name === 'ZodError') {
-      const isInvalidId = err.issues.length === 1 && err.issues[0].path[0] === 'id';
-      const statusCode = isInvalidId ? 404 : 400;
       return next(createError(statusCode, formatZodErrors(err)));
     }
     return next(err);
@@ -146,8 +144,6 @@ async function update(req, res, next) {
     return res.status(200).json(updatedAgente);
   } catch (err) {
     if (err.name === 'ZodError') {
-      const isInvalidId = err.issues.length === 1 && err.issues[0].path[0] === 'id';
-      const statusCode = isInvalidId ? 404 : 400;
       return next(createError(statusCode, formatZodErrors(err)));
     }
     return next(err);
@@ -189,8 +185,6 @@ async function patch(req, res, next) {
     return res.status(200).json(updatedAgente);
   } catch (err) {
     if (err.name === 'ZodError') {
-      const isInvalidId = err.issues.length === 1 && err.issues[0].path[0] === 'id';
-      const statusCode = isInvalidId ? 404 : 400;
       return next(createError(statusCode, formatZodErrors(err)));
     }
     return next(err);
@@ -223,8 +217,6 @@ async function remove(req, res, next) {
     res.status(204).send();
   } catch (err) {
     if (err.name === 'ZodError') {
-      const isInvalidId = err.issues.length === 1 && err.issues[0].path[0] === 'id';
-      const statusCode = isInvalidId ? 404 : 400;
       return next(createError(statusCode, formatZodErrors(err)));
     }
     return next(err);

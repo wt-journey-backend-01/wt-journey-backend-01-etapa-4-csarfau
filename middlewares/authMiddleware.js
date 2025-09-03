@@ -1,6 +1,9 @@
 import { createError } from '../utils/errorHandler.js';
 import jwt from 'jsonwebtoken';
 import { blacklist } from '../blacklist.js';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 export function authMiddleware(req, res, next) {
   const authHeader = req.headers['authorization'];

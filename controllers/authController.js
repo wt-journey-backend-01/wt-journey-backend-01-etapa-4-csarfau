@@ -5,6 +5,9 @@ import { formatZodErrors } from '../utils/formatZodErrors.js';
 import { blacklist } from '../blacklist.js';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXPIRES = '1h';
