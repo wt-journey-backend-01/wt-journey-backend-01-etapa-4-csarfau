@@ -1,236 +1,207 @@
 <sup>Esse é um feedback gerado por IA, ele pode conter erros.</sup>
 
-Você tem 7 créditos restantes para usar o sistema de feedback AI.
+Você tem 6 créditos restantes para usar o sistema de feedback AI.
 
 # Feedback para csarfau:
 
-Nota final: **50.3/100**
+Nota final: **52.0/100**
 
 Olá, csarfau! 👋🚀
 
-Primeiramente, parabéns por chegar até aqui e entregar uma API com autenticação, proteção de rotas, hashing de senha e JWT! 🎉 Isso já é um baita avanço para uma aplicação segura e profissional. Também vi que você conseguiu fazer funcionar o cadastro, login, logout, exclusão de usuários e a proteção das rotas de agentes e casos — isso é ótimo! Além disso, você implementou vários controles de validação com Zod, o que é uma prática super recomendada. 👏
+Primeiramente, parabéns pelo esforço e pelo que você já conseguiu implementar nesse desafio complexo que envolve segurança, autenticação e uma API REST completa! 🎉 Você conseguiu fazer a parte de usuários funcionar muito bem, com criação, login, logout e exclusão funcionando e passando nos testes base. Isso já é um baita avanço e mostra que você entendeu muito bem conceitos importantes como hashing de senha com bcrypt, geração de JWT e blacklist para logout. Mandou muito bem! 👏👏
 
 ---
 
-## 🎯 Conquistas Bônus que você alcançou
+## O que está funcionando bem ✅
 
-- Implementou o middleware de autenticação e proteção das rotas `/agentes` e `/casos`.
-- Usou bcrypt para hash de senhas e JWT para autenticação.
-- Validou os dados de entrada com Zod, incluindo validações complexas para a senha.
-- Implementou logout via blacklist de tokens.
-- Fez uso correto do Knex para consultas e manipulação do banco.
-- Estruturou o projeto seguindo a arquitetura MVC, com controllers, repositories, rotas e middlewares separados.
-- Documentou comandos básicos no `INSTRUCTIONS.md`.
+- **Usuários:** Registro, login, logout e exclusão passam nos testes. Isso mostra que seu fluxo de autenticação está correto.
+- **Middleware de autenticação:** Está protegendo as rotas de agentes e casos, retornando 401 quando não há token ou token inválido.
+- **Validação com Zod:** Você aplicou validações rigorosas para dados de entrada, o que é ótimo para segurança e estabilidade.
+- **Blacklist:** Você implementou corretamente a blacklist para tokens invalidados no logout.
+- **Estrutura de pastas:** Está bem organizada e segue o padrão esperado, incluindo os novos arquivos para auth.
 
-Esses pontos mostram que você já domina muitos conceitos importantes para uma API segura e organizada! 💪
+Além disso, você conseguiu implementar alguns bônus, como:
+
+- Endpoint para buscar agente responsável por caso.
+- Filtragem simples de casos por status e agente.
+- Uso correto dos schemas Zod para validação.
 
 ---
 
-## 🚨 Testes que falharam e análise detalhada
+## Onde precisamos focar para destravar as funcionalidades e melhorar a nota 🎯
 
-### 1. Testes que falharam:  
-- 'USERS: Recebe erro 400 ao tentar criar um usuário com campo extra'  
-- Vários testes relacionados a agentes e casos (criação, listagem, busca, atualização, deleção) que falharam, indicando problemas na API de agentes e casos.
+### 1. Testes relacionados a agentes e casos estão falhando
 
-### Causa raiz provável:  
-O principal problema aqui está na validação dos dados de entrada para criação de usuários, agentes e casos. Você fez um esquema Zod para validar os campos obrigatórios e seus formatos, mas o requisito do teste é que o sistema **deve rejeitar qualquer campo extra que não esteja definido no esquema** (por exemplo, se alguém enviar `{ nome, email, senha, idade }` no registro, deve retornar erro 400).
+Você teve falhas em todos os testes base que envolvem agentes e casos, como criação, listagem, busca, atualização e exclusão. Isso é um sinal claro de que as rotas ou controllers de agentes e casos não estão funcionando como esperado, mesmo que o middleware de autenticação esteja bloqueando acesso sem token (o que passou).
 
-No seu código, você usou `.strict()` para agentes e casos, o que é ótimo para impedir campos extras:
+#### Possíveis causas:
+
+- **Middleware de autenticação bloqueando chamadas sem token:** Os testes indicam que quando você tenta criar, listar, atualizar ou deletar agentes e casos _com_ token, eles falham. Isso sugere que o problema está dentro do fluxo dessas rotas protegidas.
+- **Problemas nas queries do banco:** Seu código usa Knex corretamente, mas é importante garantir que as migrations criaram as tabelas como esperado e que os dados estão sendo inseridos e buscados corretamente.
+- **Validação Zod:** Pode haver erros silenciosos na validação dos dados que fazem o controller retornar erros 400, 404 ou não retornar os dados corretamente.
+- **Formato dos dados retornados:** Os testes esperam que os dados retornados estejam exatamente conforme o esquema, com campos corretos e tipos corretos.
+
+---
+
+### Análise detalhada de alguns testes que falharam e suas causas prováveis
+
+#### Teste: `'AGENTS: Cria agentes corretamente com status code 201 e os dados inalterados do agente mais seu ID'`
+
+- Seu controller `agentesController.create` usa o schema `newAgenteSchema` para validar os dados e chama o repository para criar.
+- O schema está correto, mas pode haver um problema na migration ou no banco que impede a inserção.
+- Verifique se a migration criou a tabela `agentes` com os campos `nome` (string), `dataDeIncorporacao` (date) e `cargo` (string) corretamente.
+- Seu arquivo de migration está assim:
 
 ```js
-const newAgenteSchema = z.object({ ... }).strict();
-const newCasoSchema = z.object({ ... });
-```
-
-Porém, no `newUserSchema` dentro do `authController.js`, não encontrei o `.strict()`, o que significa que o Zod aceita campos extras sem erro:
-
-```js
-const newUserSchema = z.object({
-  nome: z.string().min(1),
-  email: z.email().nonempty(),
-  senha: z.string().min(8).regex(...),
-  // falta .strict() aqui
+await knex.schema.createTable('agentes', function (table) {
+  table.increments('id').primary();
+  table.string('nome').notNullable();
+  table.date('dataDeIncorporacao').notNullable();
+  table.string('cargo').notNullable();
 });
 ```
 
-**O que isso causa?**  
-Se o cliente enviar um campo extra no corpo da requisição para registro, o Zod não vai reclamar, e o usuário será criado normalmente. O teste espera erro 400 para isso, então ele falha.
-
-### Como corrigir:  
-Adicione o `.strict()` no `newUserSchema` para garantir que qualquer campo extra gere erro:
-
-```js
-const newUserSchema = z.object({
-  nome: z.string("O campo 'nome' deve ser uma string.").min(1, "O campo 'nome' é obrigatório."),
-  email: z.email("O campo 'email' deve ser um email válido").nonempty("O campo 'email' é obrigatório."),
-  senha: z
-    .string("O campo 'senha' deve ser uma string.")
-    .min(8, 'A senha deve ter pelo menos 8 caracteres.')
-    .regex(/[a-z]/, 'A senha deve conter pelo menos uma letra minúscula.')
-    .regex(/[A-Z]/, 'A senha deve conter pelo menos uma letra maiúscula.')
-    .regex(/[0-9]/, 'A senha deve conter pelo menos um número.')
-    .regex(/[^A-Za-z0-9]/, 'A senha deve conter pelo menos um caractere especial.'),
-}).strict();
-```
-
-Isso fará com que o Zod rejeite qualquer campo extra e o middleware retorne o erro esperado.
+- Isso parece correto.
+- Contudo, o seu seed para agentes está inserindo datas como string `'2018-02-01'`, o que é correto, mas o controller pode estar exigindo que o campo `dataDeIncorporacao` seja uma string no formato `YYYY-MM-DD` e o banco espera `date`.
+- No controller, você valida `dataDeIncorporacao` como string no formato correto, o que está certo.
+- Porém, no repository, você insere diretamente o objeto, o que deve funcionar.
+- Então, o motivo mais provável para falha aqui é que o seu teste está enviando dados de forma diferente do esperado, ou que o controller está retornando erro de validação.
+- Recomendo adicionar logs no controller para ver o que está chegando no `req.body` e se o `newAgenteSchema.parse` está passando.
 
 ---
 
-### 2. Testes de agentes e casos falhando (ex: criação, listagem, busca, atualização, deleção)
+#### Teste: `'AGENTS: Lista todos os agente corretamente com status code 200 e todos os dados de cada agente listados corretamente'`
 
-Você passou nos testes que verificam se a autenticação funciona (status 401 quando não tem token), o que é ótimo. Mas os testes que validam o funcionamento correto das rotas de agentes e casos estão falhando. Isso indica que a API não está respondendo conforme esperado.
-
-**Possíveis causas:**
-
-- **Validação de dados:** Você está usando `.strict()` para agentes, mas para casos não vi `.strict()` no `newCasoSchema`. Pode ser que campos extras estejam sendo aceitos e quebrando os testes.
-
-- **Migration de usuários:** No seu arquivo de migration (`db/migrations/20250805021032_solution_migrations.js`), no método `down`, você só está removendo as tabelas `casos` e `agentes`, mas esqueceu de remover a tabela `usuarios`. Isso pode causar problemas em resets e testes que esperam o banco limpo.
-
-```js
-export async function down(knex) {
-  await knex.schema.dropTableIfExists('casos').dropTableIfExists('agentes');
-  // falta dropTableIfExists('usuarios')
-}
-```
-
-- **DeleteUser no authController:** No método `deleteUser`, você busca o usuário com `usuariosRepository.find(userId)`, mas `userId` vem como string e no repositório você busca pelo campo `id` (que é número). Pode ser que falhe na busca por tipo. Além disso, você retorna erro 400 para usuário não encontrado, mas o teste pode esperar 404.
-
-- **Logout:** No `authController.logout`, você está usando `next` para erros, mas não recebeu `next` como parâmetro da função. Isso pode causar erro interno.
-
-```js
-async function logout(req, res) {
-  // tenta usar next() mas não tem no parâmetro
-}
-```
-
-**Como corrigir:**
-
-- Adicione `.strict()` no `newCasoSchema` para evitar campos extras.
-
-- Atualize o método `down` da migration para também apagar a tabela `usuarios`:
-
-```js
-export async function down(knex) {
-  await knex.schema.dropTableIfExists('casos');
-  await knex.schema.dropTableIfExists('agentes');
-  await knex.schema.dropTableIfExists('usuarios');
-}
-```
-
-- No `deleteUser`, faça a conversão do `userId` para número antes de buscar:
-
-```js
-const userId = Number(req.params.id);
-if (isNaN(userId)) {
-  return next(createError(400, 'ID inválido.'));
-}
-const usuario = await usuariosRepository.find(userId);
-```
-
-- Use status 404 para usuário não encontrado, pois é o padrão REST.
-
-- No `logout`, adicione o parâmetro `next` para poder usar o middleware de erro:
-
-```js
-async function logout(req, res, next) {
-  // seu código
-}
-```
+- O método `agentesController.index` chama `agentesRepository.findAll` com filtros.
+- Em `agentesRepository.findAll`, você usa `query.where('cargo', 'ilike', cargo);` para filtro, e ordenação por `dataDeIncorporacao`.
+- Aqui pode haver um problema: o campo `dataDeIncorporacao` no banco é do tipo `date`, mas no filtro você usa `ilike` para `cargo` que é string — isso está certo.
+- Contudo, o campo `dataDeIncorporacao` pode estar vindo como objeto Date do banco e seu middleware no `server.js` formata datas para `YYYY-MM-DD`, o que está correto.
+- O problema pode estar na query que retorna um array vazio ou no formato do dado.
+- Verifique se a tabela `agentes` está populada (se você rodou o seed).
+- Também verifique se o middleware de autenticação está funcionando corretamente e não bloqueando a requisição.
+- Você pode testar manualmente via Postman para ver se o endpoint `/agentes` retorna dados.
 
 ---
 
-### 3. Falta do endpoint `/usuarios/me` (Bônus)
+#### Teste: `'AGENTS: Recebe status code 401 ao tentar criar agente corretamente mas sem header de autorização com token JWT'`
 
-Vi que o teste do bônus `/usuarios/me` (retorna dados do usuário autenticado) falhou. Não encontrei esse endpoint no seu código. Criar esse endpoint é simples e muito útil para o cliente obter seus dados sem precisar passar o ID manualmente.
+- Esse teste passou, o que significa que o middleware está protegendo as rotas.
+- Ótimo! Isso confirma que o problema não é no middleware.
 
-Você pode criar uma rota no `authRoutes.js`:
+---
+
+#### Testes de casos (casosController)
+
+- O padrão dos erros é parecido: falha ao criar, listar, atualizar, deletar casos.
+- Seu controller e repository parecem corretos.
+- Uma possibilidade é que a validação de IDs de agente esteja falhando, por exemplo, ao criar um caso você verifica se o agente existe:
 
 ```js
-router.get('/usuarios/me', authMiddleware, authController.me);
+const agente = await agentesRepository.findById(newCasoData.agente_id);
+if (!agente) {
+  return next(createError(404, { agente_id: `Agente informado não existe.` }));
+}
 ```
 
-E no `authController.js`:
+- Se o agente não existir, o caso não será criado.
+- Verifique se a tabela `agentes` está populada.
+- Também revise se as rotas estão sendo chamadas com token válido e payload correto.
+
+---
+
+### 2. Falta de documentação de autenticação no INSTRUCTIONS.md
+
+Seu arquivo `INSTRUCTIONS.md` está curto e não inclui as informações pedidas no desafio, como:
+
+- Como registrar e logar usuários (exemplos de payload).
+- Como enviar o token JWT no header `Authorization`.
+- Fluxo de autenticação esperado.
+
+Isso é importante para o uso correto da API e para aprovação no desafio.
+
+---
+
+### 3. Recomendações para corrigir e melhorar
+
+- **Verifique se as migrations foram rodadas corretamente e as tabelas estão criadas e populadas.** Você pode usar o comando `npx knex migrate:latest` e `npx knex seed:run`.
+- **Teste manualmente as rotas de agentes e casos com token JWT válido.** Use Postman ou Insomnia para enviar requisições autenticadas e veja as respostas.
+- **Adicione logs temporários no controller para depurar dados recebidos e respostas.** Por exemplo:
 
 ```js
-async function me(req, res, next) {
+async function create(req, res, next) {
   try {
-    const userId = req.user.id;
-    const usuario = await usuariosRepository.find(userId);
-    if (!usuario) {
-      return next(createError(404, 'Usuário não encontrado.'));
-    }
-    return res.status(200).json(usuario);
+    console.log('Dados recebidos:', req.body);
+    let newAgenteData = newAgenteSchema.parse(req.body);
+    // restante do código...
   } catch (err) {
-    return next(err);
+    console.error(err);
+    // tratamento de erro...
   }
 }
 ```
 
----
+- **Complete o arquivo INSTRUCTIONS.md com exemplos claros de uso dos endpoints de autenticação e uso do token JWT no header.** Por exemplo:
 
-### 4. Estrutura de diretórios e arquivos
+```
+# Instruções de Autenticação
 
-Sua estrutura está muito próxima do esperado, parabéns! Só um detalhe: no arquivo `routes/authRoutes.js`, você colocou as rotas com prefixo `/auth` dentro do próprio arquivo, por exemplo:
+## Registrar usuário
+POST /auth/register
+Payload:
+{
+  "nome": "Seu Nome",
+  "email": "email@exemplo.com",
+  "senha": "Senha123!"
+}
 
-```js
-router.post('/auth/register', authController.register);
+## Login
+POST /auth/login
+Payload:
+{
+  "email": "email@exemplo.com",
+  "senha": "Senha123!"
+}
+Resposta:
+{
+  "access_token": "seu_token_jwt"
+}
+
+## Usar token JWT
+Inclua no header das requisições protegidas:
+Authorization: Bearer seu_token_jwt
 ```
 
-Mas no `server.js`, você fez:
-
-```js
-app.use('/', authRouter);
-```
-
-Com isso, para acessar o registro, o cliente precisa chamar `/auth/register` (ok). Porém, para a rota de deleção de usuário, você usou:
-
-```js
-router.delete('/users/:id', authController.deleteUser);
-```
-
-Ou seja, o caminho completo fica `/users/:id`, mas sem o prefixo `/auth`. Isso pode gerar confusão. O ideal é manter um padrão, por exemplo:
-
-- No `authRoutes.js`, usar só rotas relativas, sem o prefixo `/auth`, e no `server.js` montar:
-
-```js
-app.use('/auth', authRouter);
-```
-
-Assim, as rotas ficam organizadas e previsíveis.
-
----
-
-## 📚 Recomendações de aprendizado para você
-
-- Para entender melhor o uso de `.strict()` no Zod e validação de schemas:  
-  https://www.youtube.com/watch?v=bGN_xNc4A1k&t=3s (Refatoração e boas práticas)
-
-- Para aprofundar em autenticação JWT e bcrypt:  
-  https://www.youtube.com/watch?v=L04Ln97AwoY (JWT e BCrypt na prática)  
-  https://www.youtube.com/watch?v=Q4LQOfYwujk (Conceitos básicos de segurança e autenticação)
-
-- Para corrigir e entender melhor migrations e seeds com Knex:  
-  https://www.youtube.com/watch?v=dXWy_aGCW1E (Documentação oficial do Knex.js sobre migrations)
+- **Revise as validações Zod para garantir que elas estão de acordo com os dados enviados pelos testes.**
 
 ---
 
-## 📝 Resumo dos principais pontos para focar
+### Recursos para você estudar e aprimorar seu projeto
 
-- **Adicione `.strict()` no schema de usuário para rejeitar campos extras no registro.**
-- **Corrija o método `down` da migration para apagar a tabela `usuarios`.**
-- **Ajuste o método `deleteUser` para converter o ID para número e retornar 404 se não existir.**
-- **Adicione o parâmetro `next` no método `logout` para tratar erros corretamente.**
-- **Considere criar o endpoint `/usuarios/me` para retornar dados do usuário autenticado (bônus).**
-- **Padronize os prefixos de rota para evitar confusão entre `/auth` e `/users`.**
+- Para entender melhor autenticação, JWT e bcrypt, recomendo muito este vídeo, feito pelos meus criadores, que fala muito bem sobre autenticação em Node.js: https://www.youtube.com/watch?v=Q4LQOfYwujk
+- Para aprofundar no uso de JWT na prática: https://www.youtube.com/watch?v=keS0JWOypIU
+- Para entender melhor o uso de bcrypt e JWT juntos: https://www.youtube.com/watch?v=L04Ln97AwoY
+- Para revisar arquitetura e organização de projetos Node.js com MVC: https://www.youtube.com/watch?v=bGN_xNc4A1k&t=3s
+- Para garantir que seu banco está configurado corretamente com Docker e Knex: https://www.youtube.com/watch?v=uEABDBQV-Ek&t=1s e https://www.youtube.com/watch?v=dXWy_aGCW1E
 
 ---
 
-csarfau, seu projeto tem uma base muito boa! Com esses ajustes, sua API vai ficar alinhada com os requisitos do desafio e pronta para produção. Continue firme, pois você está no caminho certo! 💪🔥
+## Resumo rápido dos principais pontos para focar:
 
-Se precisar, volte aqui para tirar dúvidas. Estou torcendo pelo seu sucesso! 🚀✨
+- [ ] Verifique se as migrations e seeds foram aplicados corretamente e as tabelas estão populadas.
+- [ ] Teste manualmente as rotas de agentes e casos com token JWT válido para identificar onde ocorrem erros.
+- [ ] Adicione logs nos controllers para depurar dados recebidos e erros.
+- [ ] Complete o arquivo INSTRUCTIONS.md com documentação clara sobre autenticação e uso do token JWT.
+- [ ] Revise as validações Zod para confirmar que estão alinhadas com os dados esperados.
+- [ ] Confirme que o middleware de autenticação está aplicado corretamente e não bloqueia indevidamente.
+- [ ] Garanta que os dados retornados estão no formato esperado pelos testes (ex.: campos e tipos corretos).
 
-Um abraço! 🤖💙
+---
+
+csarfau, você está no caminho certo e já tem uma base muito boa para construir uma API segura e profissional! Continue revisando os pontos que destaquei, testando com calma e usando os recursos recomendados. A prática leva à perfeição, e você vai conseguir destravar esses testes rapidinho! 🚀💪
+
+Se precisar de ajuda para entender algum ponto específico, estou por aqui para ajudar! 😉
+
+Abraços e sucesso no código! 👨‍💻✨
 
 > Caso queira tirar uma dúvida específica, entre em contato com o Chapter no nosso [discord](https://discord.gg/DryuHVnz).
 
