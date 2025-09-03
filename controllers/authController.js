@@ -6,7 +6,7 @@ import { blacklist } from '../blacklist.js';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'sua_chave_super_secreta';
+const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXPIRES = '1h';
 
 const newUserSchema = z.object({
