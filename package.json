@@ -20,9 +20,11 @@
   },
   "homepage": "https://github.com/wt-journey-backend-01/wt-journey-backend-01-etapa-3-csarfau#readme",
   "dependencies": {
+    "bcrypt": "^6.0.0",
     "dayjs": "^1.11.13",
     "dotenv": "^17.2.1",
     "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2",
     "knex": "^3.1.0",
     "pg": "^8.16.3",
     "swagger-jsdoc": "^6.2.8",
