@@ -1,6 +1,6 @@
 import { createError } from '../utils/errorHandler.js';
 import jwt from 'jsonwebtoken';
-import { blacklist } from '../blacklist';
+import { blacklist } from '../blacklist.js';
 
 export function authMiddleware(req, res, next) {
   const authHeader = req.headers['authorization'];
@@ -10,7 +10,7 @@ export function authMiddleware(req, res, next) {
     return next(createError(401, 'Token inválido!'));
   }
 
-  if(blacklist.has(token)) {
+  if (blacklist.has(token)) {
     return next(createError(401, 'Token inválido!'));
   }
 
