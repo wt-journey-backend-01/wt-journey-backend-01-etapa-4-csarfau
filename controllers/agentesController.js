@@ -84,7 +84,7 @@ async function show(req, res, next) {
     console.log(err.issues);
 
     if (err.name === 'ZodError') {
-      return next(createError(statusCode, formatZodErrors(err)));
+      return next(createError(400, formatZodErrors(err)));
     }
     return next(err);
   }
@@ -144,7 +144,7 @@ async function update(req, res, next) {
     return res.status(200).json(updatedAgente);
   } catch (err) {
     if (err.name === 'ZodError') {
-      return next(createError(statusCode, formatZodErrors(err)));
+      return next(createError(400, formatZodErrors(err)));
     }
     return next(err);
   }
@@ -185,7 +185,7 @@ async function patch(req, res, next) {
     return res.status(200).json(updatedAgente);
   } catch (err) {
     if (err.name === 'ZodError') {
-      return next(createError(statusCode, formatZodErrors(err)));
+      return next(createError(400, formatZodErrors(err)));
     }
     return next(err);
   }
@@ -217,7 +217,7 @@ async function remove(req, res, next) {
     res.status(204).send();
   } catch (err) {
     if (err.name === 'ZodError') {
-      return next(createError(statusCode, formatZodErrors(err)));
+      return next(createError(400, formatZodErrors(err)));
     }
     return next(err);
   }
